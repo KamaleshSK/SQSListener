@@ -33,6 +33,9 @@ public class SqsCtrl {
 	 // QueueMessagingTemplate initializes the messaging template by configuring the destination resolver as well as the message converter.
 	 @Autowired
 	 private QueueMessagingTemplate queueMessagingTemplate;
+	 
+	 @Autowired
+	 private Consumer consumer;
 	
 	 // HTTP POST url - http://localhost:10091/sqs/send
 	 @PostMapping(value = "/send")
@@ -49,6 +52,7 @@ public class SqsCtrl {
 	 @SqsListener(value = QUEUE, deletionPolicy = SqsMessageDeletionPolicy.ON_SUCCESS)
 	 public void getMessageFromSqs(@Validated Message message, @Header("MessageId") String messageId) {
 		 LOGGER.info("Received message= {} with messageId= {}", message, messageId);
+		 consumer.sendMessageToSqs(message);
 		 // TODO - Developer can do some operations like saving the message to the database, calling any 3rd party etc.
 	 }
 }

@@ -15,6 +15,11 @@ public class Message {
 		this.id = id;
 		this.message = message;
 	}
+	
+	public Message(String messageId, String message) {
+		this.id = Integer.valueOf(messageId);
+		this.message = message;
+	}
 
 	public int getId() {
 		return id;
