@@ -1,3 +1,5 @@
+
+/*
 package com.SQSExample.SQSImplementation.SQSControllerImpl;
 
 import org.slf4j.Logger;
@@ -30,3 +32,4 @@ public class Consumer {
 	    LOGGER.info("Message sent successfully to the Amazon sqs consumer queue");
 	}
 }
+*/

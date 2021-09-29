@@ -1,3 +1,5 @@
+
+/*
 package com.SQSExample.SQSImplementation.SQSControllerImpl;
 
 import org.slf4j.Logger;
@@ -56,3 +58,5 @@ public class SqsCtrl {
 		 // TODO - Developer can do some operations like saving the message to the database, calling any 3rd party etc.
 	 }
 }
+
+*/

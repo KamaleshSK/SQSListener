@@ -1,3 +1,4 @@
+/*
 package com.SQSExample.SQSImplementation.SQSConfigImpl;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -47,3 +48,4 @@ public class SqsConfig {
              .build();
  }
 }
+*/

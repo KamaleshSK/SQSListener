@@ -1,3 +1,4 @@
+/*
 package com.SQSExample.SQSImplementation.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -35,3 +36,4 @@ public class Message {
 	}
 	
 }
+*/
