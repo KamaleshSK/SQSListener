@@ -1,27 +1,61 @@
 package com.PKEClient.PKEClient.Services;
 
+import java.io.BufferedInputStream;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.SecureRandom;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
+import java.security.cert.PKIXParameters;
+import java.security.cert.TrustAnchor;
+import java.security.cert.X509Certificate;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.Base64;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.TrustManagerFactory;
+import javax.net.ssl.X509ExtendedTrustManager;
+import javax.net.ssl.X509TrustManager;
+
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import com.PKEClient.PKEClient.Config.SslConfiguration;
 import com.PKEClient.PKEClient.Models.EncryptedResponseEntity;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.squareup.okhttp.OkHttpClient;
-import com.squareup.okhttp.Request;
-import com.squareup.okhttp.Response;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+
+import okhttp3.CertificatePinner;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
+
 
 @Service
 public class EncryptedService {
@@ -34,6 +68,9 @@ public class EncryptedService {
     
     @Autowired
     private SslConfiguration sslConfiguration;
+    
+    @Value("${http.client.ssl.trust-store}")
+    private Resource keyStore;
 
     public void init() {
         try {
@@ -89,16 +126,79 @@ public class EncryptedService {
         */
         return decryptedMessage;
     }
+    
+    KeyStore readKeyStore() throws KeyStoreException, NoSuchAlgorithmException, CertificateException, IOException {
+        KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
+
+        // get user password and file input stream
+        char[] password = "password".toCharArray();
+
+        java.io.FileInputStream fis = null;
+        try {
+            fis = new java.io.FileInputStream("E:/SQSImplementation/SQSImplementation/src/main/resources/tutorial.jks");
+            ks.load(fis, password);
+        } finally {
+            if (fis != null) {
+                fis.close();
+            }
+        }
+        return ks;
+    }
+       
+    public String getOAuthJWTToken() throws Exception {
+
+    	
+    	String jwtToken = new String();
+    	String jwtTokenJson = new String();
+    	
+    	try {
+    		
+    		KeyStore keyStore = readKeyStore(); //your method to obtain KeyStore
+    		SSLContext sslContext = SSLContext.getInstance("SSL");
+    		TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+    		trustManagerFactory.init(keyStore);
+    		KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+    		keyManagerFactory.init(keyStore, "password".toCharArray());
+    		sslContext.init(keyManagerFactory.getKeyManagers(),trustManagerFactory.getTrustManagers(), new SecureRandom());
+    	
+    		OkHttpClient client = new OkHttpClient().newBuilder()
+    				  .sslSocketFactory(sslContext.getSocketFactory(), (X509TrustManager) trustManagerFactory.getTrustManagers()[0])
+    				  .build();
+            
+    		
+			MediaType mediaType = MediaType.parse("application/x-www-form-urlencoded");
+			RequestBody body = RequestBody.create(mediaType, "username=hendi&password=password&grant_type=password");
+			Request request = new Request.Builder()
+			  .url("https://localhost:8443/oauth/token")
+			  .method("POST", body)
+			  .addHeader("Content-Type", "application/x-www-form-urlencoded")
+			  .addHeader("Accept", "application/json")
+			  .addHeader("Authorization", "Basic aGVuZGktY2xpZW50OmhlbmRpLXNlY3JldA==")
+			  .build();
+			Response response = client.newCall(request).execute();
+			jwtTokenJson = response.body().string();
+			
+			ObjectMapper mapper = new ObjectMapper();
+			Map<String,Object> map = mapper.readValue(jwtTokenJson, Map.class);
+			jwtToken = (String) map.get("access_token");
+			
+    	} catch (Exception e) {
+    		System.out.println(e);
+    	}
+    	System.out.println(jwtToken);
+    	return jwtToken;
+    }
 
 
-    public void getDecryptedMessage() {
+    public String getDecryptedMessage() {
         EncryptedService rsa = new EncryptedService();
         rsa.initFromStrings();
+        String plainText = new String();
 
         try{
-        	
+        	String access_token = this.getOAuthJWTToken();
         	ResponseEntity<String> response = 
-        		      sslConfiguration.restTemplate().getForEntity("https://localhost:8443/users/allUsers?access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2MzI4NDc5NzQsInVzZXJfbmFtZSI6IjEiLCJhdXRob3JpdGllcyI6WyJST0xFX0FETUlOIl0sImp0aSI6ImQ3MGMwYjVlLTExMGEtNDFhMi05ZjU0LWRkMjk4YzhhNGU4ZSIsImNsaWVudF9pZCI6ImhlbmRpLWNsaWVudCIsInNjb3BlIjpbInJlYWQiLCJ3cml0ZSIsInRydXN0Il19.YJmZFRV1eZdsE9f6IPqz5wwa_Qn7l-5D1UTpfm8dKpg", String.class);
+        		      sslConfiguration.restTemplate().getForEntity("https://localhost:8443/users/allUsers?access_token={access_token}", String.class, access_token);
         	
         	/*
             OkHttpClient client = new OkHttpClient();
@@ -121,13 +221,14 @@ public class EncryptedService {
             Cipher aesCipher = Cipher.getInstance("AES");
             aesCipher.init(Cipher.DECRYPT_MODE, originalKey);
             byte[] bytePlainText = aesCipher.doFinal(decode(encryptedResponse.getAESEncryptedData()));
-            String plainText = new String(bytePlainText);
+            plainText = new String(bytePlainText);
             
-            System.err.println("SECRET MESSAGE = " + plainText);
+            
 
         }catch (Exception ignored){
         	System.out.println(ignored);
         }
+        return plainText;
 
     }
 	

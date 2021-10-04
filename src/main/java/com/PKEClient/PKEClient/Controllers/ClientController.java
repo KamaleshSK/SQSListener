@@ -17,8 +17,7 @@ public class ClientController {
 	
 	@GetMapping(value = "/customerdata")
 	public String getSecureData() {
-		encryptedService.getDecryptedMessage();
-		return "OK";
+		return encryptedService.getDecryptedMessage();
 	}
 	
 }
